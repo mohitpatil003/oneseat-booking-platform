@@ -3,8 +3,7 @@
 **A seat is sold exactly once, even when thousands of users compete for it.**
 
 ## Problem
-Popular events sell out in seconds, and naive systems oversell seats or
-double-charge customers under heavy concurrent load.
+Popular events sell out in seconds, and naive systems oversell seats or double-charge customers under heavy concurrent load.
 
 ## Goals
 - Zero oversold seats and zero double charges under concurrent load
