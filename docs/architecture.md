@@ -23,3 +23,5 @@ no parent pom and no shared library.
 - Services never import each other's classes. They meet only through REST and Kafka.
 - Configuration comes from environment variables, with defaults in application.yml.
 - Every service call carries an X-Correlation-Id header.
+
+Note: the service folders and docker-compose.yml are created from Day 8 onwards (booking-service Day 8, payment-service Day 16, notification-service Day 20).

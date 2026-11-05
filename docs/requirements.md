@@ -92,7 +92,7 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 | NFR-4 | Availability query latency | p95 under 150 ms | k6 results |
 | NFR-5 | Throughput | 1,000 or more requests per second sustained for 60 seconds | k6 results |
 | NFR-6 | Idempotency | 100% of retries with the same key return the original result; 0 duplicate charges | Integration tests with duplicate and concurrent retries |
-| NFR-7 | Resilience | No lost, duplicated or stuck bookings when the app, Redis, Kafka or Postgres restarts mid-flow | Chaos tests (Days 27 and 28) |
+| NFR-7 | Resilience | No lost, duplicated or stuck bookings when a service, Redis, Kafka or Postgres restarts mid-flow | Chaos tests (Days 27 and 28) |
 | NFR-8 | Recovery | Stalled work resumes within 30 seconds of the dependency coming back | Chaos tests with timestamps |
 | NFR-9 | Hold expiry | Expired holds make seats available again within 1 second; stale pending bookings are expired within 60 seconds | Integration tests with short TTLs |
 | NFR-10 | Security | No secrets in the repo; hold endpoint rate-limited (HTTP 429 above the limit); all input validated | Gitleaks scan; rate-limit tests |
@@ -102,8 +102,8 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 ## 6. Assumptions, constraints and out of scope
 
 ### Assumptions
-- One region and one primary Postgres database; no multi-region.
-- Postgres is the source of truth for sold seats. Redis only holds temporary seat holds.
+- One region and one Postgres server hosting a separate database per service (booking_db, payment_db, notification_db); no multi-region.
+- booking_db is the source of truth for sold seats. Redis only holds temporary seat holds.
 - Payment is a simulated provider with configurable latency, failures and timeouts. No real money moves.
 - An event has up to 10,000 seats. A hold covers up to 4 seats and lasts 5 minutes.
 - All servers use UTC. Hold expiry uses Redis TTL, not clocks compared in application code.
@@ -126,7 +126,7 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | Concurrency bugs in hold and confirm logic take longer than planned | High | High | Write tests first; run a small concurrent test from Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
+| R1 | Concurrency bugs in hold and confirm logic take longer than planned | High | High | Write tests first; run a 10-thread race test from Day 13 and the full 200-thread test on Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
 | R2 | 8 GB laptop memory limits load tests and Kubernetes | High | Medium | Use the memory modes; cap Kafka and JVM heaps; lower virtual users; record hardware; use the cut list |
 | R3 | AI-generated code hides bugs or invents APIs | High | High | Commit before each agent run; require tests; check library names against official docs; review payment, locking and SQL code line by line |
 | R4 | Scope and schedule slip (12 h a week alongside a job and interview prep) | Medium | High | Weekly retro; cut from the bottom of the cut list; never cut concurrency tests, load numbers or the README |
@@ -156,7 +156,7 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 | FS-1 | Redis restarts while holds exist | Holds are lost; seats return to AVAILABLE; confirm rejects a missing hold; nothing is double-sold |
 | FS-2 | Client retries confirm while the first request is still running | Only one request is processed; the other waits or returns the same result |
 | FS-3 | Payment succeeds but the response times out | The retry returns the same result; the customer is charged once |
-| FS-4 | App crashes after the booking commit but before the Kafka publish | The outbox publisher sends the event after restart; no event is lost |
+| FS-4 | booking-service crashes after the booking commit but before the Kafka publish | The outbox publisher sends the event after restart; no event is lost |
 | FS-5 | Kafka is down for 60 seconds | Outbox rows accumulate, then drain after recovery; no bookings are affected |
 | FS-6 | Consumer receives the same message twice | The processed-events table makes it a no-op |
 | FS-7 | Poison message fails every retry | It moves to the dead-letter topic after the maximum attempts |
@@ -172,7 +172,7 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 
 ## 9. Architecture style
 
-OneSeat is built as three services in one repository (Maven multi-module):
+OneSeat is built as three independent Maven projects in one repository (no shared parent pom or shared library):
 
 - **booking-service:** events, seats, Redis holds, bookings, idempotency records and the transactional outbox. It keeps the hold and the booking together so the database unique constraint prevents oversell.
 - **payment-service:** a simulated payment provider with its own database and an idempotent charge API keyed by booking id.
