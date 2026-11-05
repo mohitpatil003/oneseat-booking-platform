@@ -165,3 +165,22 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 | FS-10 | 1,000 users request the same seat at once | Exactly one succeeds; the rest get 409 quickly |
 | FS-11 | Expiry sweeper runs on two instances at once | Each stale booking is expired exactly once |
 | FS-12 | Same idempotency key sent with a different request body | Rejected with a clear error; nothing is charged |
+| FS-13 | payment-service is down or slow during confirm | Confirm fails fast after the timeout; booking is marked FAILED and the hold is released; the circuit breaker opens after repeated failures |
+| FS-14 | booking-service retries a payment call after a timeout | payment-service returns the stored result for the same key; the customer is charged once |
+| FS-15 | payment succeeded but booking-service crashed before saving CONFIRMED | On restart, the stale PENDING booking is reconciled by asking payment-service for the payment of that booking id, then confirmed or failed |
+| FS-16 | notification-service is down | Events wait in Kafka and are delivered after recovery; bookings are unaffected |
+
+## 9. Architecture style
+
+OneSeat is built as three services in one repository (Maven multi-module):
+
+- **booking-service:** events, seats, Redis holds, bookings, idempotency records and the transactional outbox. It keeps the hold and the booking together so the database unique constraint prevents oversell.
+- **payment-service:** a simulated payment provider with its own database and an idempotent charge API keyed by booking id.
+- **notification-service:** a Kafka consumer with retries, a dead-letter topic and a processed-events table.
+
+Rules:
+- Each service owns its database. No service reads another service's tables.
+- Services communicate only through REST (booking to payment, with timeout, bounded retries and a circuit breaker) and Kafka (booking.confirmed).
+- Every call carries a correlation id header.
+- The stale-PENDING sweeper reconciles with payment-service before expiring a booking.
+- An API gateway is a Could item; until then, rate limiting lives in booking-service.

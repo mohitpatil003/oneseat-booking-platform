@@ -11,3 +11,5 @@ Stack: Java 21, Spring Boot 3, Maven, PostgreSQL, Redis, Kafka, Flyway.
 - Confirm and payment must be idempotent through the Idempotency-Key header.
 - Packages: com.oneseat.<module>. Flyway files: V<number>__description.sql. Kafka topics: lowercase, dot-separated (booking.confirmed).
 - Commit messages: type: short description (feat, fix, docs, test, chore, refactor).
+- Each service owns its database; never read another service's tables. Services talk only through REST and Kafka.
+- Pass a correlation id header on every service call.
