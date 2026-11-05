@@ -41,7 +41,7 @@ As an attendee, I want failed payments to free my seats without charging me so t
 - [ ] A payment is never charged twice for the same booking.
 
 ### US-5 Release seats (Attendee, System)
-As the system, I want expired and cancelled holds to return seats to the pool so that other buyers can book them.
+As the system, I want expired and canceled holds to return seats to the pool so that other buyers can book them.
 - [ ] An expired hold makes the seats AVAILABLE again.
 - [ ] Only the hold owner can release a hold manually, and release is immediate.
 
@@ -84,20 +84,20 @@ As an admin, I want to see booking, conflict and error counts so that I can judg
 Targets are provisional. They are re-checked against real measurements on Day 25.
 Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR-10 (rate limiting) and NFR-11 (metrics and consumer lag) depend on Should items and are dropped if those items are cut.
 
-| ID | Area | Target | How it is verified |
-|---|---|---|---|
-| NFR-1 | Correctness | 0 oversold seats and 0 double charges in every load and chaos run | 200-thread concurrency test; k6 flash-sale run; SQL check that no seat has more than one booking |
-| NFR-2 | Hold latency | p95 under 300 ms at target load | k6 results |
-| NFR-3 | Confirm latency | p95 under 500 ms, including a simulated payment of 100 ms or less | k6 results |
-| NFR-4 | Availability query latency | p95 under 150 ms | k6 results |
-| NFR-5 | Throughput | 1,000 or more requests per second sustained for 60 seconds | k6 results |
-| NFR-6 | Idempotency | 100% of retries with the same key return the original result; 0 duplicate charges | Integration tests with duplicate and concurrent retries |
-| NFR-7 | Resilience | No lost, duplicated or stuck bookings when a service, Redis, Kafka or Postgres restarts mid-flow | Chaos tests (Days 27 and 28) |
-| NFR-8 | Recovery | Stalled work resumes within 30 seconds of the dependency coming back | Chaos tests with timestamps |
-| NFR-9 | Hold expiry | Expired holds make seats available again within 1 second; stale pending bookings are expired within 60 seconds | Integration tests with short TTLs |
-| NFR-10 | Security | No secrets in the repo; hold endpoint rate-limited (HTTP 429 above the limit); all input validated | Gitleaks scan; rate-limit tests |
-| NFR-11 | Observability | Metrics for holds, conflicts, bookings, payment failures and Kafka consumer lag | Prometheus endpoint check |
-| NFR-12 | Operability | The whole system starts with one command and deploys to Kubernetes from manifests | README walkthrough on a clean checkout |
+| ID     | Area                       | Target                                                                                                         | How it is verified                                                                               |
+|--------|----------------------------|----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
+| NFR-1  | Correctness                | 0 oversold seats and 0 double charges in every load and chaos run                                              | 200-thread concurrency test; k6 flash-sale run; SQL check that no seat has more than one booking |
+| NFR-2  | Hold latency               | p95 under 300 ms at target load                                                                                | k6 results                                                                                       |
+| NFR-3  | Confirm latency            | p95 under 500 ms, including a simulated payment of 100 ms or less                                              | k6 results                                                                                       |
+| NFR-4  | Availability query latency | p95 under 150 ms                                                                                               | k6 results                                                                                       |
+| NFR-5  | Throughput                 | 1,000 or more requests per second sustained for 60 seconds                                                     | k6 results                                                                                       |
+| NFR-6  | Idempotency                | 100% of retries with the same key return the original result; 0 duplicate charges                              | Integration tests with duplicate and concurrent retries                                          |
+| NFR-7  | Resilience                 | No lost, duplicated or stuck bookings when a service, Redis, Kafka or Postgres restarts mid-flow               | Chaos tests (Days 27 and 28)                                                                     |
+| NFR-8  | Recovery                   | Stalled work resumes within 30 seconds of the dependency coming back                                           | Chaos tests with timestamps                                                                      |
+| NFR-9  | Hold expiry                | Expired holds make seats available again within 1 second; stale pending bookings are expired within 60 seconds | Integration tests with short TTLs                                                                |
+| NFR-10 | Security                   | No secrets in the repo; hold endpoint rate-limited (HTTP 429 above the limit); all input validated             | Gitleaks scan; rate-limit tests                                                                  |
+| NFR-11 | Observability              | Metrics for holds, conflicts, bookings, payment failures and Kafka consumer lag                                | Prometheus endpoint check                                                                        |
+| NFR-12 | Operability                | The whole system starts with one command and deploys to Kubernetes from manifests                              | README walkthrough on a clean checkout                                                           |
 
 ## 6. Assumptions, constraints and out of scope
 
@@ -124,25 +124,25 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 
 ## 7. Top 5 risks and mitigations
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|---|
-| R1 | Concurrency bugs in hold and confirm logic take longer than planned | High | High | Write tests first; run a 10-thread race test from Day 13 and the full 200-thread test on Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
-| R2 | 8 GB laptop memory limits load tests and Kubernetes | High | Medium | Use the memory modes; cap Kafka and JVM heaps; lower virtual users; record hardware; use the cut list |
-| R3 | AI-generated code hides bugs or invents APIs | High | High | Commit before each agent run; require tests; check library names against official docs; review payment, locking and SQL code line by line |
-| R4 | Scope and schedule slip (12 h a week alongside a job and interview prep) | Medium | High | Weekly retro; cut from the bottom of the cut list; never cut concurrency tests, load numbers or the README |
-| R5 | AI API limits, outages or an empty balance block coding days | Medium | Medium | Keep a second provider key; write prompts small; do documentation and tests on days the API is down |
+| #  | Risk                                                                     | Likelihood | Impact | Mitigation                                                                                                                                                                                    |
+|----|--------------------------------------------------------------------------|------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| R1 | Concurrency bugs in hold and confirm logic take longer than planned      | High       | High   | Write tests first; run a 10-thread race test from Day 13 and the full 200-thread test on Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
+| R2 | 8 GB laptop memory limits load tests and Kubernetes                      | High       | Medium | Use the memory modes; cap Kafka and JVM heaps; lower virtual users; record hardware; use the cut list                                                                                         |
+| R3 | AI-generated code hides bugs or invents APIs                             | High       | High   | Commit before each agent run; require tests; check library names against official docs; review payment, locking and SQL code line by line                                                     |
+| R4 | Scope and schedule slip (12 h a week alongside a job and interview prep) | Medium     | High   | Weekly retro; cut from the bottom of the cut list; never cut concurrency tests, load numbers or the README                                                                                    |
+| R5 | AI API limits, outages or an empty balance block coding days             | Medium     | Medium | Keep a second provider key; write prompts small; do documentation and tests on days the API is down                                                                                           |
 
 ## 8. Test and measurement plan
 
 ### Test types
-| Type | Tools | Covers |
-|---|---|---|
-| Unit | JUnit 5, Mockito | Business rules, state transitions |
-| Integration | Testcontainers (Postgres, Redis, Kafka) | Hold, confirm, idempotency, outbox, consumers |
-| Concurrency | ExecutorService with CountDownLatch (200 threads) | NFR-1: exactly one winner per seat |
-| Load | k6 | NFR-2 to NFR-5 |
-| Chaos | docker stop, process kill, under load | NFR-7 and NFR-8 |
-| Security and quality | Gitleaks, Trivy, JaCoCo | NFR-10, image and secret scanning, coverage |
+| Type                 | Tools                                             | Covers                                        |
+|----------------------|---------------------------------------------------|-----------------------------------------------|
+| Unit                 | JUnit 5, Mockito                                  | Business rules, state transitions             |
+| Integration          | Testcontainers (Postgres, Redis, Kafka)           | Hold, confirm, idempotency, outbox, consumers |
+| Concurrency          | ExecutorService with CountDownLatch (200 threads) | NFR-1: exactly one winner per seat            |
+| Load                 | k6                                                | NFR-2 to NFR-5                                |
+| Chaos                | docker stop, process kill, under load             | NFR-7 and NFR-8                               |
+| Security and quality | Gitleaks, Trivy, JaCoCo                           | NFR-10, image and secret scanning, coverage   |
 
 ### How measurements are taken
 - Record hardware, git commit, k6 script name and date next to every result.
@@ -151,24 +151,24 @@ Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR
 - Save results as load-tests/results/YYYY-MM-DD-label.md. Never quote a number that is not saved there.
 
 ### Failure scenarios
-| ID | Scenario | Expected behavior |
-|---|---|---|
-| FS-1 | Redis restarts while holds exist | Holds are lost; seats return to AVAILABLE; confirm rejects a missing hold; nothing is double-sold |
-| FS-2 | Client retries confirm while the first request is still running | Only one request is processed; the other waits or returns the same result |
-| FS-3 | Payment succeeds but the response times out | The retry returns the same result; the customer is charged once |
-| FS-4 | booking-service crashes after the booking commit but before the Kafka publish | The outbox publisher sends the event after restart; no event is lost |
-| FS-5 | Kafka is down for 60 seconds | Outbox rows accumulate, then drain after recovery; no bookings are affected |
-| FS-6 | Consumer receives the same message twice | The processed-events table makes it a no-op |
-| FS-7 | Poison message fails every retry | It moves to the dead-letter topic after the maximum attempts |
-| FS-8 | Postgres restarts during confirm | The transaction rolls back; the hold stays until TTL; a retry succeeds |
-| FS-9 | Hold expires while payment is in flight | Confirm only starts payment if enough hold time remains; otherwise it is rejected |
-| FS-10 | 1,000 users request the same seat at once | Exactly one succeeds; the rest get 409 quickly |
-| FS-11 | Expiry sweeper runs on two instances at once | Each stale booking is expired exactly once |
-| FS-12 | Same idempotency key sent with a different request body | Rejected with a clear error; nothing is charged |
-| FS-13 | payment-service is down or slow during confirm | Confirm fails fast after the timeout; booking is marked FAILED and the hold is released; the circuit breaker opens after repeated failures |
-| FS-14 | booking-service retries a payment call after a timeout | payment-service returns the stored result for the same key; the customer is charged once |
-| FS-15 | payment succeeded but booking-service crashed before saving CONFIRMED | On restart, the stale PENDING booking is reconciled by asking payment-service for the payment of that booking id, then confirmed or failed |
-| FS-16 | notification-service is down | Events wait in Kafka and are delivered after recovery; bookings are unaffected |
+| ID    | Scenario                                                                      | Expected behavior                                                                                                                          |
+|-------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| FS-1  | Redis restarts while holds exist                                              | Holds are lost; seats return to AVAILABLE; confirm rejects a missing hold; nothing is double-sold                                          |
+| FS-2  | Client retries confirm while the first request is still running               | Only one request is processed; the other waits or returns the same result                                                                  |
+| FS-3  | Payment succeeds but the response times out                                   | The retry returns the same result; the customer is charged once                                                                            |
+| FS-4  | booking-service crashes after the booking commit but before the Kafka publish | The outbox publisher sends the event after restart; no event is lost                                                                       |
+| FS-5  | Kafka is down for 60 seconds                                                  | Outbox rows accumulate, then drain after recovery; no bookings are affected                                                                |
+| FS-6  | Consumer receives the same message twice                                      | The processed-events table makes it a no-op                                                                                                |
+| FS-7  | Poison message fails every retry                                              | It moves to the dead-letter topic after the maximum attempts                                                                               |
+| FS-8  | Postgres restarts during confirm                                              | The transaction rolls back; the hold stays until TTL; a retry succeeds                                                                     |
+| FS-9  | Hold expires while payment is in flight                                       | Confirm only starts payment if enough hold time remains; otherwise it is rejected                                                          |
+| FS-10 | 1,000 users request the same seat at once                                     | Exactly one succeeds; the rest get 409 quickly                                                                                             |
+| FS-11 | Expiry sweeper runs on two instances at once                                  | Each stale booking is expired exactly once                                                                                                 |
+| FS-12 | Same idempotency key sent with a different request body                       | Rejected with a clear error; nothing is charged                                                                                            |
+| FS-13 | payment-service is down or slow during confirm                                | Confirm fails fast after the timeout; booking is marked FAILED and the hold is released; the circuit breaker opens after repeated failures |
+| FS-14 | booking-service retries a payment call after a timeout                        | payment-service returns the stored result for the same key; the customer is charged once                                                   |
+| FS-15 | payment succeeded but booking-service crashed before saving CONFIRMED         | On restart, the stale PENDING booking is reconciled by asking payment-service for the payment of that booking id, then confirmed or failed |
+| FS-16 | notification-service is down                                                  | Events wait in Kafka and are delivered after recovery; bookings are unaffected                                                             |
 
 ## 9. Architecture style
 

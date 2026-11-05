@@ -14,3 +14,8 @@ Next: Day 3 - numeric NFR targets, assumptions, constraints, risks, test and mea
 
 Done: completed docs/requirements.md with numeric NFR targets, assumptions, constraints, out of scope, top 5 risks and a test and measurement plan with failure scenarios.
 Next: Day 4 - Mermaid architecture diagram, module boundaries, domain model (Event, Seat, Hold, Booking, Payment, IdempotencyRecord, OutboxEvent).
+
+## Day 4 (5 Nov 2026)
+
+Done: Mermaid system diagram for three services, service boundaries table, per-service package layout, and domain model by owning service in docs/architecture.md.
+Next: Day 5 - database schema (booking_db, payment_db, notification_db), constraints, indexes, and a draft endpoint list.
