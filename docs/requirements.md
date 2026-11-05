@@ -33,6 +33,7 @@ As an attendee, I want to confirm my held seats with an Idempotency-Key so that 
 - [ ] A repeated request with the same Idempotency-Key returns the original result and does not charge again.
 - [ ] The same key with a different request body is rejected.
 - [ ] Confirming after the hold has expired is rejected.
+- [ ] Confirming with less than 10 seconds of hold time left is rejected.
 
 ### US-4 Handle payment failure (Attendee)
 As an attendee, I want failed payments to free my seats without charging me so that I can try again.
@@ -71,17 +72,17 @@ As an admin, I want to see booking, conflict and error counts so that I can judg
 - Virtual waiting room
 - JWT authentication
 - Cancellation and refunds after confirmation
-- Seat map UI and multi-tier pricing
+- Multi-tier seat pricing
 
 **Won't (this version)**
 - Single sign-on, barcode tickets, surge pricing
 - A real payment gateway (a simulated provider is used)
-- A frontend (Swagger UI is the interface)
+- A frontend or seat-map UI (Swagger UI is the interface)
 
 ## 5. Non-functional requirements
 
 Targets are provisional. They are re-checked against real measurements on Day 25.
-Always record the hardware beside every result.
+Always record the hardware beside every result. NFR-9 (stale pending sweep), NFR-10 (rate limiting) and NFR-11 (metrics and consumer lag) depend on Should items and are dropped if those items are cut.
 
 | ID | Area | Target | How it is verified |
 |---|---|---|---|
@@ -108,6 +109,7 @@ Always record the hardware beside every result.
 - All servers use UTC. Hold expiry uses Redis TTL, not clocks compared in application code.
 - Users are identified by a user id in the request. JWT authentication is a Could item.
 - Load test numbers come from a single 8 GB laptop acting as both client and server, so they are indicative, not production numbers.
+- Payment timeout is 3 seconds. Confirm is rejected unless at least 10 seconds of hold time remain, so a hold cannot expire during payment.
 
 ### Constraints
 - Stack: Java 21, Spring Boot 3, PostgreSQL, Redis, Kafka, Docker, Kubernetes.
@@ -124,7 +126,7 @@ Always record the hardware beside every result.
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | Concurrency bugs in hold and confirm logic take longer than planned | High | High | Write tests first; run a small concurrent test from Day 13, not only Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
+| R1 | Concurrency bugs in hold and confirm logic take longer than planned | High | High | Write tests first; run a small concurrent test from Day 22; keep the database unique constraint as the final safety net; review all locking code by hand |
 | R2 | 8 GB laptop memory limits load tests and Kubernetes | High | Medium | Use the memory modes; cap Kafka and JVM heaps; lower virtual users; record hardware; use the cut list |
 | R3 | AI-generated code hides bugs or invents APIs | High | High | Commit before each agent run; require tests; check library names against official docs; review payment, locking and SQL code line by line |
 | R4 | Scope and schedule slip (12 h a week alongside a job and interview prep) | Medium | High | Weekly retro; cut from the bottom of the cut list; never cut concurrency tests, load numbers or the README |
