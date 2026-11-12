@@ -75,16 +75,16 @@ Reading the diagram:
 
 ## Service boundaries
 
-| | booking-service | payment-service | notification-service |
-|---|---|---|---|
-| Port | 8081 | 8082 | 8083 |
-| Database | booking_db | payment_db | notification_db |
-| Owns | Events, seats, holds (Redis), bookings, idempotency records, outbox | Payments and charge idempotency | Processed events |
-| REST API | Events, seats, holds, bookings | POST /charges, GET /charges/{bookingId} | Health only |
-| Calls | payment-service (REST), Redis, Kafka | Nothing | Kafka |
-| Publishes | booking.confirmed | Nothing | Nothing |
-| Consumes | Nothing | Nothing | booking.confirmed |
-| Must never | Read payment_db | Read booking_db | Read booking_db or payment_db |
+|            | booking-service                                                     | payment-service                         | notification-service          |
+|------------|---------------------------------------------------------------------|-----------------------------------------|-------------------------------|
+| Port       | 8081                                                                | 8082                                    | 8083                          |
+| Database   | booking_db                                                          | payment_db                              | notification_db               |
+| Owns       | Events, seats, holds (Redis), bookings, idempotency records, outbox | Payments and charge idempotency         | Processed events              |
+| REST API   | Events, seats, holds, bookings                                      | POST /charges, GET /charges/{bookingId} | Health only                   |
+| Calls      | payment-service (REST), Redis, Kafka                                | Nothing                                 | Kafka                         |
+| Publishes  | booking.confirmed                                                   | Nothing                                 | Nothing                       |
+| Consumes   | Nothing                                                             | Nothing                                 | booking.confirmed             |
+| Must never | Read payment_db                                                     | Read booking_db                         | Read booking_db or payment_db |
 
 GET /charges/{bookingId} exists so booking-service can reconcile a stale PENDING booking (FS-15).
 
@@ -94,22 +94,22 @@ Each service is a standalone Maven project with its own pom.xml and Maven wrappe
 
 ### Layer responsibilities
 
-| Layer | Responsibility |
-|---|---|
-| controller | Handles HTTP requests and responses only |
-| service | Contains business logic and transaction boundaries |
-| dto | Contains request and response DTOs |
-| entity | Contains persistence entities |
-| repository | Contains database queries and persistence operations |
-| mapper | Converts between entities and DTOs |
-| exception | Contains service-specific exceptions and error handling |
-| config | Contains service configuration |
-| common | Contains shared utilities within the service |
-| redis | Contains Redis-related code where needed |
-| client | Contains REST clients for external services where needed |
-| messaging | Contains Kafka messaging code where needed |
-| provider | Contains payment provider integration where needed |
-| mail | Contains email functionality where needed |
+| Layer      | Responsibility                                           |
+|------------|----------------------------------------------------------|
+| controller | Handles HTTP requests and responses only                 |
+| service    | Contains business logic and transaction boundaries       |
+| dto        | Contains request and response DTOs                       |
+| entity     | Contains persistence entities                            |
+| repository | Contains database queries and persistence operations     |
+| mapper     | Converts between entities and DTOs                       |
+| exception  | Contains service-specific exceptions and error handling  |
+| config     | Contains service configuration                           |
+| common     | Contains shared utilities within the service             |
+| redis      | Contains Redis-related code where needed                 |
+| client     | Contains REST clients for external services where needed |
+| messaging  | Contains Kafka messaging code where needed               |
+| provider   | Contains payment provider integration where needed       |
+| mail       | Contains email functionality where needed                |
 
 ### Dependency direction
 
@@ -214,26 +214,21 @@ notification-service/
         repository/
 ```
 
-### Draft API endpoints
+### API endpoints
 
-| Service | Endpoint | Purpose |
-|---|---|---|
-| booking-service | Events, seats, holds and bookings REST endpoints | Event and booking operations |
-| payment-service | POST /charges | Create or retrieve an idempotent charge |
-| payment-service | GET /charges/{bookingId} | Retrieve payment status for booking reconciliation |
-| notification-service | Health endpoint | Service health |
+The Day 5 endpoint inventory is maintained in [docs/api/endpoints.md](api/endpoints.md). OpenAPI request/response schemas, validation rules and detailed error responses are part of Day 6.
 
 ### Naming conventions
 
-| Component | Naming |
-|---|---|
-| Controller | XxxController |
-| Service | XxxService |
-| Repository | XxxRepository |
-| Request DTO | XxxRequest |
-| Response DTO | XxxResponse |
-| Mapper | XxxMapper |
-| Exception | XxxException |
+| Component    | Naming        |
+|--------------|---------------|
+| Controller   | XxxController |
+| Service      | XxxService    |
+| Repository   | XxxRepository |
+| Request DTO  | XxxRequest    |
+| Response DTO | XxxResponse   |
+| Mapper       | XxxMapper     |
+| Exception    | XxxException  |
 
 ### Test layout
 
@@ -290,6 +285,7 @@ classDiagram
         UUID bookingId
         UUID eventId
         UUID seatId
+        Instant releasedAt
     }
     class IdempotencyRecord {
         String key
@@ -308,9 +304,12 @@ classDiagram
         Instant createdAt
         Instant publishedAt
     }
+
     Event "1" --> "*" Seat : has
+    Hold "0..*" --> "1" Event : belongs to
+    Hold "0..1" --> "1..4" Seat : temporarily reserves
     Booking "1" --> "*" BookingSeat : covers
-    Seat "1" --> "*" BookingSeat : sold as
+    Seat "1" --> "*" BookingSeat : claimed over time
     Booking --> BookingStatus
 ```
 
@@ -350,11 +349,14 @@ classDiagram
     }
 ```
 
-### Draft decisions (confirm on Day 5)
+## Day 5 design decisions
 
-- Seat has no stored status. SOLD means the seat is in a CONFIRMED booking, HELD means a hold exists in Redis or the seat is in a PENDING booking, and anything else is AVAILABLE.
-- The unique constraint on (event_id, seat_id) lives on BookingSeat. Day 5 decides how FAILED and EXPIRED bookings free their seats.
-- Hold exists only in Redis, as a key with a 5 minute TTL, never in Postgres.
-- Payment is idempotent by booking id: the same booking id returns the stored payment instead of charging again.
-- ProcessedEvent makes consumers idempotent. A repeat of the same event id is ignored.
+- A Seat has no stored status. `SOLD` means it belongs to a `CONFIRMED` booking; `HELD` means a hold exists in Redis or the seat is claimed by a `PENDING` booking; otherwise it is `AVAILABLE`.
+- Hold exists only in Redis, as a key with a five-minute TTL. It is not stored in PostgreSQL.
+- `booking_seats` stores one row per seat in a booking. The partial unique index on `(event_id, seat_id)` where `released_at IS NULL` permits only one active claim. `PENDING` and `CONFIRMED` rows remain active; `FAILED` and `EXPIRED` rows are released by setting `released_at` in the same transaction as the status change.
+- Booking confirmation idempotency is scoped by `(endpoint, idempotency_key)`. Reusing the same key and endpoint with a different request body is rejected.
+- Payment is idempotent by booking ID. Payment-service returns the stored result for a repeated booking ID and does not create another charge.
+- The booking confirmation and its outbox event are committed in the same booking_db transaction.
+- `ProcessedEvent` makes notification consumption idempotent. A repeat of the same event ID and topic is ignored.
+- Each service owns its database. There are no cross-database foreign keys.
 - IDs are UUIDs generated by the application.

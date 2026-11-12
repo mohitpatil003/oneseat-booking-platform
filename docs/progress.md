@@ -19,3 +19,7 @@ Next: Day 4 - Mermaid architecture diagram, module boundaries, domain model (Eve
 
 Done: Mermaid system diagram for three services, service boundaries table, per-service package layout, and domain model by owning service in docs/architecture.md.
 Next: Day 5 - database schema (booking_db, payment_db, notification_db), constraints, indexes, and a draft endpoint list.
+
+## Day 5 (6 Nov 2026)
+Done: designed the tables, ownership, constraints and indexes for booking_db, payment_db and notification_db in docs/database-schema.md; drafted the REST endpoint inventory in docs/api/endpoints.md.
+Next: Day 6 - OpenAPI specification per service, Kafka event catalog, sequence diagrams and failure-mode table.
